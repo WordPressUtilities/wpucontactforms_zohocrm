@@ -1,0 +1,126 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WPU Contact Forms ZohoCRM\n"
+"POT-Creation-Date: 2022-09-09 14:38+0200\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-Basepath: .\n"
+"X-Poedit-KeywordsList: __;_e\n"
+"X-Generator: Poedit 3.1.1\n"
+"X-Poedit-SearchPath-0: ../.\n"
+
+#: .././inc/WPUBaseAdminPage/WPUBaseAdminPage.php:180
+msgid "Help"
+msgstr "Aide"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:135
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:551
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:558
+#: .././wpucontactforms_zohocrm.php:37
+msgid "Settings"
+msgstr "Réglages"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:164
+msgid "No"
+msgstr "Non"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:164
+msgid "Yes"
+msgstr "Oui"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:300
+msgid "Settings saved."
+msgstr "Paramètres sauvegardés."
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:346
+msgid "Upload New Media"
+msgstr "Envoi d'un nouveau média"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:497
+msgid "Language"
+msgstr "Langue"
+
+#: .././inc/WPUBaseSettings/WPUBaseSettings.php:573
+msgid "Save"
+msgstr "Sauvegarder"
+
+#: .././wpucontactforms_zohocrm.php:63
+msgid "App Settings"
+msgstr "Paramètre de l'App"
+
+#: .././wpucontactforms_zohocrm.php:66
+msgid "Token Settings"
+msgstr "Paramètres du token"
+
+#: .././wpucontactforms_zohocrm.php:72
+msgid "Client ID"
+msgstr "Client ID"
+
+#: .././wpucontactforms_zohocrm.php:76
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: .././wpucontactforms_zohocrm.php:80
+msgid "Access token"
+msgstr "Access token"
+
+#: .././wpucontactforms_zohocrm.php:84
+msgid "Token expiration"
+msgstr "Expiration du token"
+
+#: .././wpucontactforms_zohocrm.php:88
+msgid "Refresh token"
+msgstr "Refresh token"
+
+#: .././wpucontactforms_zohocrm.php:92
+msgid "Accounts server"
+msgstr "Accounts server"
+
+#: .././wpucontactforms_zohocrm.php:96
+msgid "API Domain"
+msgstr "API Domain"
+
+#: .././wpucontactforms_zohocrm.php:138
+msgid "No application installed"
+msgstr ""
+
+#: .././wpucontactforms_zohocrm.php:139
+#, php-format
+msgid ""
+"Please <a target=\"_blank\" href=\"%s\">create an new Server-based "
+"application here</a> and specify the following redirect_uri : <br /><strong "
+"contenteditable>%s</strong>"
+msgstr ""
+"Veuillez <a target=\"_blank\" href=\"%s\">créer une nouvelle application "
+"« server-based » ici</a> en spécifiant la redirect_uri suivante : <br /"
+"><strong contenteditable>%s</strong>"
+
+#: .././wpucontactforms_zohocrm.php:140
+msgid "Get the client ID and client Secret and paste it below."
+msgstr "Obtenez le client ID et le client Secret et collez-les ci-dessous."
+
+#: .././wpucontactforms_zohocrm.php:151
+msgid "Connect to your account"
+msgstr "Connectez-vous à votre compte"
+
+#: .././wpucontactforms_zohocrm.php:153
+msgid "Connection seems to work"
+msgstr "La connexion semble fonctionner"
+
+#: .././wpucontactforms_zohocrm.php:162
+msgid "Save Changes"
+msgstr "Sauvegarder"
+
+#: .././wpucontactforms_zohocrm.php:221
+msgid "Token was successfully updated."
+msgstr ""
+
+#: .././wpucontactforms_zohocrm.php:225
+msgid "There was an error"
+msgstr "Il y a eu une erreur"
