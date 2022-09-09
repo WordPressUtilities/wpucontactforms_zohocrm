@@ -3,7 +3,7 @@
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.1.0
+Version: 0.2.0
 Author: darklg
 Author URI: https://darklg.me/
 License: MIT License
@@ -113,11 +113,16 @@ class WPUContactFormsZohoCRM {
             $this->messages = new \wpucontactforms_zohocrm\WPUBaseMessages($this->plugin_settings['id']);
         }
 
-        include dirname( __FILE__ ) . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
+        # Update
+        include dirname(__FILE__) . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
         $this->settings_update = new \wpucontactforms_zohocrm\WPUBaseUpdate(
             'WordPressUtilities',
             'wpucontactforms_zohocrm',
             $this->plugin_version);
+
+        # Action contactform
+        add_action('wpucontactforms_submit_contactform', array(&$this, 'wpucontactforms_submit_contactform'), 10, 2);
+
     }
 
     public function wpucontactforms_zohocrm__cron_hook() {
@@ -172,6 +177,27 @@ class WPUContactFormsZohoCRM {
         echo '</form>';
     }
 
+    /* ----------------------------------------------------------
+      Contact
+    ---------------------------------------------------------- */
+
+    function wpucontactforms_submit_contactform($form) {
+        $zoho_data = array();
+        foreach ($form->contact_fields as $field_id => $field) {
+            if (isset($field['zohocrm_field_name'])) {
+                $zoho_data[$field['zohocrm_field_name']] = $field['value'];
+            }
+        }
+
+        if ($zoho_data) {
+            $this->create_lead($zoho_data);
+        }
+    }
+
+    /* ----------------------------------------------------------
+      API
+    ---------------------------------------------------------- */
+
     public function refresh_token() {
         $settings = $this->settings_obj->get_settings();
         $accounts_server = $this->settings_obj->get_setting('accounts_server');
@@ -188,7 +214,7 @@ class WPUContactFormsZohoCRM {
         }
     }
 
-    public function post_message($data = array()) {
+    public function create_lead($data = array()) {
         if (!is_array($data)) {
             $data = array();
         }
@@ -200,6 +226,10 @@ class WPUContactFormsZohoCRM {
         $settings = $this->settings_obj->get_settings();
         $access_token = $this->settings_obj->get_setting('access_token');
         $api_domain = $this->settings_obj->get_setting('api_domain');
+
+        if (!$access_token) {
+            return;
+        }
 
         wp_remote_post($api_domain . '/crm/v2/Leads', array(
             'body' => json_encode(array('data' => array($data))),
