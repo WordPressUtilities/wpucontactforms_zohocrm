@@ -3,7 +3,7 @@
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.2.0
+Version: 0.3.0
 Author: darklg
 Author URI: https://darklg.me/
 License: MIT License
@@ -11,7 +11,7 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
-    private $plugin_version = '0.1.0';
+    private $plugin_version = '0.3.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -105,8 +105,12 @@ class WPUContactFormsZohoCRM {
         $this->basecron = new \wpucontactforms_zohocrm\WPUBaseCron(array(
             'pluginname' => $this->plugin_settings['name'],
             'cronhook' => 'wpucontactforms_zohocrm__cron_hook',
-            'croninterval' => 360000
+            'croninterval' => 3600
         ));
+        add_action('wpucontactforms_zohocrm__cron_hook', array(&$this,
+            'wpucontactforms_zohocrm__cron_hook'
+        ), 99);
+
         # MESSAGES
         if (is_admin()) {
             include dirname(__FILE__) . '/inc/WPUBaseMessages/WPUBaseMessages.php';
@@ -142,31 +146,39 @@ class WPUContactFormsZohoCRM {
     public function page_content__main() {
         $settings = $this->settings_obj->get_settings();
         $api_create_url = 'https://api-console.zoho.eu/add';
+        $connect_url = 'https://accounts.zoho.com/oauth/v2/auth?' . http_build_query(array(
+            'scope' => 'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.ALL,ZohoCRM.org.ALL,aaaserver.profile.ALL,ZohoCRM.settings.functions.all,ZohoCRM.notifications.all,ZohoCRM.coql.read,ZohoCRM.files.create,ZohoCRM.bulk.all',
+            'response_type' => 'code',
+            'access_type' => 'offline',
+            'client_id' => $settings['client_id'],
+            'redirect_uri' => $this->redirect_uri
+        ));
+
         if (isset($_GET['code'], $_GET['accounts-server']) && filter_var($_GET['accounts-server'], FILTER_VALIDATE_URL) !== FALSE) {
             $this->set_access_token($_GET['code'], $_GET['accounts-server']);
+        } elseif (isset($_GET['refresh_token'])) {
+            $this->refresh_token();
+            $this->set_message('token_updated', __('Token was successfully updated.', 'wpucontactforms_zohocrm'), 'updated');
+            $this->redirect_to_default_page();
         } else {
-            if (!isset($settings['client_id'], $settings['client_secret']) || !$settings['client_id'] || !$settings['client_secret']) {
+            $token_validity = $this->get_token_validity();
+                $refresh_token_link = '<p><a class="button-primary" href="' . add_query_arg('refresh_token', '1', $this->redirect_uri) . '">' . __('Refresh your access token', 'wpucontactforms_zohocrm') . '</a></p>';
+            if ($token_validity == 'invalid') {
                 /* Instructions */
                 echo '<div class="notice notice-error"><p>' . __('No application installed', 'wpucontactforms_zohocrm') . '</p></div>';
                 echo '<p>' . sprintf(__('Please <a target="_blank" href="%s">create an new Server-based application here</a> and specify the following redirect_uri : <br /><strong contenteditable>%s</strong>', 'wpucontactforms_zohocrm'), $api_create_url, $this->redirect_uri) . '</p>';
                 echo '<p>' . __('Get the client ID and client Secret and paste it below.', 'wpucontactforms_zohocrm') . '</p>';
                 echo '<hr />';
-
+            } elseif ($token_validity == 'expired-token') {
+                echo $refresh_token_link;
+                echo '<hr />';
+            } elseif ($token_validity != 'valid') {
+                echo '<p><a class="button-primary" href="' . $connect_url . '">' . __('Connect to your account', 'wpucontactforms_zohocrm') . '</a></p>';
+                echo '<hr />';
             } else {
-                /* Link */
-                if (!isset($settings['access_token']) || !$settings['access_token'] || !$settings['expires_in'] || ($settings['expires_in'] && $settings['expires_in'] < time())) {
-                    $url = 'https://accounts.zoho.com/oauth/v2/auth?' . http_build_query(array(
-                        'scope' => 'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.ALL,ZohoCRM.org.ALL,aaaserver.profile.ALL,ZohoCRM.settings.functions.all,ZohoCRM.notifications.all,ZohoCRM.coql.read,ZohoCRM.files.create,ZohoCRM.bulk.all',
-                        'response_type' => 'code',
-                        'access_type' => 'offline',
-                        'client_id' => $settings['client_id'],
-                        'redirect_uri' => $this->redirect_uri
-                    ));
-                    echo '<a href="' . $url . '">' . __('Connect to your account', 'wpucontactforms_zohocrm') . '</a>';
-                    echo '<hr />';
-                } else {
-                    echo '<div class="notice updated"><p>' . __('Connection seems to work', 'wpucontactforms_zohocrm') . '</p></div>';
-                }
+                echo '<div class="notice updated"><p>' . __('Connection seems to work', 'wpucontactforms_zohocrm') . '</p></div>';
+                echo $refresh_token_link;
+                echo '<hr />';
             }
         }
 
@@ -198,6 +210,20 @@ class WPUContactFormsZohoCRM {
       API
     ---------------------------------------------------------- */
 
+    function get_token_validity() {
+        $settings = $this->settings_obj->get_settings();
+        if (!isset($settings['client_id'], $settings['client_secret'], $settings['refresh_token'], $settings['access_token']) || !$settings['client_id'] || !$settings['client_secret']) {
+            return 'invalid';
+        }
+        if (!$settings['refresh_token']) {
+            return 'missing-refresh-token';
+        }
+        if (!$settings['access_token'] || !$settings['expires_in'] || ($settings['expires_in'] && $settings['expires_in'] < time())) {
+            return 'expired-token';
+        }
+        return 'valid';
+    }
+
     public function refresh_token() {
         $settings = $this->settings_obj->get_settings();
         $accounts_server = $this->settings_obj->get_setting('accounts_server');
@@ -221,6 +247,11 @@ class WPUContactFormsZohoCRM {
 
         if (!isset($data['Lead_Source'])) {
             $data['Lead_Source'] = get_site_url();
+        }
+
+        $token_validity = $this->get_token_validity();
+        if ($token_validity == 'expired-token') {
+            $this->refresh_token();
         }
 
         $settings = $this->settings_obj->get_settings();
@@ -257,9 +288,8 @@ class WPUContactFormsZohoCRM {
 
         if (!is_wp_error($server_output)) {
             $this->update_tokens_from_response(wp_remote_retrieve_body($server_output));
-            $this->set_message('token_updated', __('Token was successfully updated.', 'wpucontactforms_zohocrm', 'success'));
-            echo '<script>document.location.href="' . $this->redirect_uri . '"; </script>';
-            die;
+            $this->set_message('token_updated', __('Token was successfully updated.', 'wpucontactforms_zohocrm'), 'updated');
+            $this->redirect_to_default_page();
         } else {
             echo '<p>' . __('There was an error', 'wpucontactforms_zohocrm') . '</p>';
             echo '<pre>';
@@ -284,6 +314,11 @@ class WPUContactFormsZohoCRM {
         if (isset($server_output->api_domain) && $server_output->api_domain) {
             $this->settings_obj->update_setting('api_domain', $server_output->api_domain);
         }
+    }
+
+    function redirect_to_default_page() {
+        echo '<script>document.location.href="' . $this->redirect_uri . '"; </script>';
+        die;
     }
 
 }
