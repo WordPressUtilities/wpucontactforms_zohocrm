@@ -2,12 +2,11 @@
 
 Link WPUContactForms results to Zoho CRM
 
-
 ## How to use :
 
 - Configure the plugin with a client ID and a client Secret.
 - Install WPUContactForms & create a form.
-- Add `` to each field you wish to zend into Zoho CRM.
+- Add a `zohocrm_field_name` attribute to each field you wish to zend into Zoho CRM.
 
 ### Example :
 

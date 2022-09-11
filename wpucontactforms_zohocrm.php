@@ -3,7 +3,7 @@
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.3.0
+Version: 0.3.1
 Author: darklg
 Author URI: https://darklg.me/
 License: MIT License
@@ -11,7 +11,7 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
-    private $plugin_version = '0.3.0';
+    private $plugin_version = '0.3.1';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -84,6 +84,10 @@ class WPUContactFormsZohoCRM {
             ),
             'expires_in' => array(
                 'label' => __('Token expiration', 'wpucontactforms_zohocrm'),
+                'section' => 'token'
+            ),
+            'last_update' => array(
+                'label' => __('Last update', 'wpucontactforms_zohocrm'),
                 'section' => 'token'
             ),
             'refresh_token' => array(
@@ -162,7 +166,10 @@ class WPUContactFormsZohoCRM {
             $this->redirect_to_default_page();
         } else {
             $token_validity = $this->get_token_validity();
-                $refresh_token_link = '<p><a class="button-primary" href="' . add_query_arg('refresh_token', '1', $this->redirect_uri) . '">' . __('Refresh your access token', 'wpucontactforms_zohocrm') . '</a></p>';
+            $refresh_token_link = '<p><a class="button-primary" href="' . add_query_arg('refresh_token', '1', $this->redirect_uri) . '">' . __('Refresh your access token', 'wpucontactforms_zohocrm') . '</a></p>';
+            if (isset($settings['last_update']) && $settings['last_update']) {
+                echo '<p>' . sprintf(__('Last update: %s ago.', 'wpucontactforms_zohocrm'), human_time_diff($settings['last_update'])) . '</p>';
+            }
             if ($token_validity == 'invalid') {
                 /* Instructions */
                 echo '<div class="notice notice-error"><p>' . __('No application installed', 'wpucontactforms_zohocrm') . '</p></div>';
@@ -306,6 +313,7 @@ class WPUContactFormsZohoCRM {
             $this->settings_obj->update_setting('access_token', $server_output->access_token);
         }
         if (isset($server_output->expires_in) && $server_output->expires_in) {
+            $this->settings_obj->update_setting('last_update', time());
             $this->settings_obj->update_setting('expires_in', time() + intval($server_output->expires_in, 10));
         }
         if (isset($server_output->refresh_token) && $server_output->refresh_token) {
