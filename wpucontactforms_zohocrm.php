@@ -3,20 +3,21 @@
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.3.1
+Version: 0.4.0
 Author: darklg
 Author URI: https://darklg.me/
 License: MIT License
-License URI: http://opensource.org/licenses/MIT
+License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
-    private $plugin_version = '0.3.1';
+    private $plugin_version = '0.4.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
     );
     private $messages = false;
+    private $api_version = 'v2';
     private $settings_obj;
 
     public function __construct() {
@@ -28,6 +29,7 @@ class WPUContactFormsZohoCRM {
 
         # TRANSLATION
         load_plugin_textdomain('wpucontactforms_zohocrm', false, dirname(plugin_basename(__FILE__)) . '/lang/');
+
         # CUSTOM PAGE
         $admin_pages = array(
             'main' => array(
@@ -64,6 +66,9 @@ class WPUContactFormsZohoCRM {
                 'app' => array(
                     'name' => __('App Settings', 'wpucontactforms_zohocrm')
                 ),
+                'plugin' => array(
+                    'name' => __('Plugin Settings', 'wpucontactforms_zohocrm')
+                ),
                 'token' => array(
                     'name' => __('Token Settings', 'wpucontactforms_zohocrm')
                 )
@@ -77,6 +82,15 @@ class WPUContactFormsZohoCRM {
             'client_secret' => array(
                 'label' => __('Client Secret', 'wpucontactforms_zohocrm'),
                 'section' => 'app'
+            ),
+            'update_records' => array(
+                'label' => __('Update Records', 'wpucontactforms_zohocrm'),
+                'type' => 'select',
+                'section' => 'app',
+                'datas' => array(
+                    0 => __('No', 'wpucontactforms_zohocrm'),
+                    1 => __('Yes', 'wpucontactforms_zohocrm')
+                )
             ),
             'access_token' => array(
                 'label' => __('Access token', 'wpucontactforms_zohocrm'),
@@ -150,7 +164,7 @@ class WPUContactFormsZohoCRM {
     public function page_content__main() {
         $settings = $this->settings_obj->get_settings();
         $api_create_url = 'https://api-console.zoho.eu/add';
-        $connect_url = 'https://accounts.zoho.com/oauth/v2/auth?' . http_build_query(array(
+        $connect_url = 'https://accounts.zoho.com/oauth/' . $this->api_version . '/auth?' . http_build_query(array(
             'scope' => 'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.ALL,ZohoCRM.org.ALL,aaaserver.profile.ALL,ZohoCRM.settings.functions.all,ZohoCRM.notifications.all,ZohoCRM.coql.read,ZohoCRM.files.create,ZohoCRM.bulk.all',
             'response_type' => 'code',
             'access_type' => 'offline',
@@ -209,7 +223,7 @@ class WPUContactFormsZohoCRM {
         }
 
         if ($zoho_data) {
-            $this->create_lead($zoho_data);
+            $this->create_or_update_lead($zoho_data);
         }
     }
 
@@ -234,7 +248,7 @@ class WPUContactFormsZohoCRM {
     public function refresh_token() {
         $settings = $this->settings_obj->get_settings();
         $accounts_server = $this->settings_obj->get_setting('accounts_server');
-        $server_output = wp_remote_post($accounts_server . "/oauth/v2/token", array(
+        $server_output = wp_remote_post($accounts_server . "/oauth/" . $this->api_version . "/token", array(
             'body' => array(
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $settings['refresh_token'],
@@ -247,7 +261,7 @@ class WPUContactFormsZohoCRM {
         }
     }
 
-    public function create_lead($data = array()) {
+    public function create_or_update_lead($data = array()) {
         if (!is_array($data)) {
             $data = array();
         }
@@ -264,12 +278,50 @@ class WPUContactFormsZohoCRM {
         $settings = $this->settings_obj->get_settings();
         $access_token = $this->settings_obj->get_setting('access_token');
         $api_domain = $this->settings_obj->get_setting('api_domain');
+        $update_records = $this->settings_obj->get_setting('update_records');
 
         if (!$access_token) {
-            return;
+            return false;
         }
 
-        wp_remote_post($api_domain . '/crm/v2/Leads', array(
+        /* If an email exists : try to update record */
+        if (isset($data['Email']) && is_email($data['Email']) && $update_records) {
+            $req_search_lead = wp_remote_get($api_domain . '/crm/' . $this->api_version . '/Leads/search?criteria=(Email:equals:' . urlencode($data['Email']) . ')', array(
+                'headers' => array(
+                    'Authorization' => 'Zoho-oauthtoken ' . $access_token
+                )
+            ));
+            if (!is_wp_error($req_search_lead)) {
+                $lead_details = json_decode(wp_remote_retrieve_body($req_search_lead), true);
+                if (is_array($lead_details) && isset($lead_details['data'], $lead_details['data'][0])) {
+                    $data['id'] = $lead_details['data'][0]['id'];
+                    return $this->update_lead($data);
+                }
+            }
+        }
+
+        return $this->create_lead($data);
+    }
+
+    private function update_lead($data) {
+        $access_token = $this->settings_obj->get_setting('access_token');
+        $api_domain = $this->settings_obj->get_setting('api_domain');
+        $req = wp_remote_request($api_domain . '/crm/' . $this->api_version . '/Leads', array(
+            'body' => json_encode(array('data' => array($data))),
+            'method' => 'PUT',
+            'headers' => array(
+                'Content-Type: application/json',
+                'cache-control: no-cache',
+                'Authorization' => 'Zoho-oauthtoken ' . $access_token
+            )
+        ));
+        return $this->api_is_successful_req($req);
+    }
+
+    private function create_lead($data) {
+        $access_token = $this->settings_obj->get_setting('access_token');
+        $api_domain = $this->settings_obj->get_setting('api_domain');
+        $req = wp_remote_post($api_domain . '/crm/' . $this->api_version . '/Leads', array(
             'body' => json_encode(array('data' => array($data))),
             'headers' => array(
                 'Content-Type: application/json',
@@ -277,13 +329,22 @@ class WPUContactFormsZohoCRM {
                 'Authorization' => 'Zoho-oauthtoken ' . $access_token
             )
         ));
+        return $this->api_is_successful_req($req);
+    }
+
+    function api_is_successful_req($req) {
+        if (is_wp_error($req)) {
+            return false;
+        }
+        $req_details = json_decode(wp_remote_retrieve_body($req), true);
+        return (is_array($req_details) && isset($req_details['data'], $req_details['data'][0]));
     }
 
     public function set_access_token($code, $accounts_server) {
         $settings = $this->settings_obj->get_settings();
         $this->settings_obj->update_setting('accounts_server', $accounts_server);
 
-        $server_output = wp_remote_post($accounts_server . "/oauth/v2/token", array(
+        $server_output = wp_remote_post($accounts_server . "/oauth/" . $this->api_version . "/token", array(
             'body' => array(
                 'grant_type' => 'authorization_code',
                 'code' => $code,
