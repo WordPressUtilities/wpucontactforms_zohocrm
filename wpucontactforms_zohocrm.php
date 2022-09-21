@@ -3,7 +3,7 @@
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.4.0
+Version: 0.4.1
 Author: darklg
 Author URI: https://darklg.me/
 License: MIT License
@@ -11,7 +11,7 @@ License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
-    private $plugin_version = '0.4.0';
+    private $plugin_version = '0.4.1';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -86,7 +86,7 @@ class WPUContactFormsZohoCRM {
             'update_records' => array(
                 'label' => __('Update Records', 'wpucontactforms_zohocrm'),
                 'type' => 'select',
-                'section' => 'app',
+                'section' => 'plugin',
                 'datas' => array(
                     0 => __('No', 'wpucontactforms_zohocrm'),
                     1 => __('Yes', 'wpucontactforms_zohocrm')
