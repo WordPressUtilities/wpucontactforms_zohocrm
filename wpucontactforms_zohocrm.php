@@ -1,16 +1,30 @@
 <?php
+defined('ABSPATH') || die;
 /*
 Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
-Description: WPU Contact Forms ZohoCRM is a wonderful plugin.
-Version: 0.4.1
+Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
+Description: Connect WPU Contact Forms to ZohoCRM
+Version: 0.5.0
 Author: darklg
 Author URI: https://darklg.me/
+Text Domain: wpucontactforms_zohocrm
+Domain Path: /lang
+Requires at least: 6.2
+Requires PHP: 8.0
+Network: Optional
 License: MIT License
 License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
+    public $redirect_uri;
+    public $plugin_description;
+    public $adminpages;
+    public $settings_details;
+    public $settings;
+    public $basecron;
+    public $settings_update;
     private $plugin_version = '0.4.1';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
@@ -28,7 +42,11 @@ class WPUContactFormsZohoCRM {
         $this->redirect_uri = admin_url('admin.php?page=wpucontactforms_zohocrm-main');
 
         # TRANSLATION
-        load_plugin_textdomain('wpucontactforms_zohocrm', false, dirname(plugin_basename(__FILE__)) . '/lang/');
+        $lang_dir = dirname(plugin_basename(__FILE__)) . '/lang/';
+        if (!load_plugin_textdomain('wpucontactforms_zohocrm', false, $lang_dir)) {
+            load_muplugin_textdomain('wpucontactforms_zohocrm', $lang_dir);
+        }
+        $this->plugin_description = __('Connect WPU Contact Forms to ZohoCRM', 'wpucontactforms_zohocrm');
 
         # CUSTOM PAGE
         $admin_pages = array(
@@ -38,7 +56,7 @@ class WPUContactFormsZohoCRM {
                 'menu_name' => $this->plugin_settings['name'],
                 'name' => $this->plugin_settings['name'],
                 'settings_link' => true,
-                'settings_name' => __('Settings'),
+                'settings_name' => __('Settings', 'wpucontactforms_zohocrm'),
                 'function_content' => array(&$this,
                     'page_content__main'
                 )
@@ -50,7 +68,7 @@ class WPUContactFormsZohoCRM {
             'basename' => plugin_basename(__FILE__)
         );
         // Init admin page
-        include dirname(__FILE__) . '/inc/WPUBaseAdminPage/WPUBaseAdminPage.php';
+        require_once __DIR__ . '/inc/WPUBaseAdminPage/WPUBaseAdminPage.php';
         $this->adminpages = new \wpucontactforms_zohocrm\WPUBaseAdminPage();
         $this->adminpages->init($pages_options, $admin_pages);
         # SETTINGS
@@ -117,9 +135,9 @@ class WPUContactFormsZohoCRM {
                 'section' => 'token'
             )
         );
-        include dirname(__FILE__) . '/inc/WPUBaseSettings/WPUBaseSettings.php';
+        require_once __DIR__ . '/inc/WPUBaseSettings/WPUBaseSettings.php';
         $this->settings_obj = new \wpucontactforms_zohocrm\WPUBaseSettings($this->settings_details, $this->settings);
-        include dirname(__FILE__) . '/inc/WPUBaseCron/WPUBaseCron.php';
+        require_once __DIR__ . '/inc/WPUBaseCron/WPUBaseCron.php';
         $this->basecron = new \wpucontactforms_zohocrm\WPUBaseCron(array(
             'pluginname' => $this->plugin_settings['name'],
             'cronhook' => 'wpucontactforms_zohocrm__cron_hook',
@@ -131,12 +149,12 @@ class WPUContactFormsZohoCRM {
 
         # MESSAGES
         if (is_admin()) {
-            include dirname(__FILE__) . '/inc/WPUBaseMessages/WPUBaseMessages.php';
+            require_once __DIR__ . '/inc/WPUBaseMessages/WPUBaseMessages.php';
             $this->messages = new \wpucontactforms_zohocrm\WPUBaseMessages($this->plugin_settings['id']);
         }
 
         # Update
-        include dirname(__FILE__) . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
+        require_once __DIR__ . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
         $this->settings_update = new \wpucontactforms_zohocrm\WPUBaseUpdate(
             'WordPressUtilities',
             'wpucontactforms_zohocrm',
@@ -206,7 +224,7 @@ class WPUContactFormsZohoCRM {
         echo '<form action="' . admin_url('options.php') . '" method="post">';
         settings_fields($this->settings_details['option_id']);
         do_settings_sections($this->settings_details['plugin_id']);
-        echo submit_button(__('Save Changes', 'wpucontactforms_zohocrm'));
+        submit_button(__('Save Changes', 'wpucontactforms_zohocrm'));
         echo '</form>';
     }
 
@@ -214,7 +232,7 @@ class WPUContactFormsZohoCRM {
       Contact
     ---------------------------------------------------------- */
 
-    function wpucontactforms_submit_contactform($form) {
+    public function wpucontactforms_submit_contactform($form) {
         $zoho_data = array();
         foreach ($form->contact_fields as $field_id => $field) {
             if (isset($field['zohocrm_field_name'])) {
@@ -231,7 +249,7 @@ class WPUContactFormsZohoCRM {
       API
     ---------------------------------------------------------- */
 
-    function get_token_validity() {
+    public function get_token_validity() {
         $settings = $this->settings_obj->get_settings();
         if (!isset($settings['client_id'], $settings['client_secret'], $settings['refresh_token'], $settings['access_token']) || !$settings['client_id'] || !$settings['client_secret']) {
             return 'invalid';
@@ -286,11 +304,8 @@ class WPUContactFormsZohoCRM {
 
         /* If an email exists : try to update record */
         if (isset($data['Email']) && is_email($data['Email']) && $update_records) {
-            $req_search_lead = wp_remote_get($api_domain . '/crm/' . $this->api_version . '/Leads/search?criteria=(Email:equals:' . urlencode($data['Email']) . ')', array(
-                'headers' => array(
-                    'Authorization' => 'Zoho-oauthtoken ' . $access_token
-                )
-            ));
+            $req_search_lead = $this->build_request('/Leads/search?criteria=(Email:equals:' . urlencode($data['Email']) . ')', 'GET');
+
             if (!is_wp_error($req_search_lead)) {
                 $lead_details = json_decode(wp_remote_retrieve_body($req_search_lead), true);
                 if (is_array($lead_details) && isset($lead_details['data'], $lead_details['data'][0])) {
@@ -304,39 +319,46 @@ class WPUContactFormsZohoCRM {
     }
 
     private function update_lead($data) {
-        $access_token = $this->settings_obj->get_setting('access_token');
-        $api_domain = $this->settings_obj->get_setting('api_domain');
-        $req = wp_remote_request($api_domain . '/crm/' . $this->api_version . '/Leads', array(
-            'body' => json_encode(array('data' => array($data))),
-            'method' => 'PUT',
-            'headers' => array(
-                'Content-Type: application/json',
-                'cache-control: no-cache',
-                'Authorization' => 'Zoho-oauthtoken ' . $access_token
-            )
-        ));
+        $req = $this->build_request('/Leads', 'PUT', $data);
         return $this->api_is_successful_req($req);
     }
 
     private function create_lead($data) {
-        $access_token = $this->settings_obj->get_setting('access_token');
-        $api_domain = $this->settings_obj->get_setting('api_domain');
-        $req = wp_remote_post($api_domain . '/crm/' . $this->api_version . '/Leads', array(
-            'body' => json_encode(array('data' => array($data))),
-            'headers' => array(
-                'Content-Type: application/json',
-                'cache-control: no-cache',
-                'Authorization' => 'Zoho-oauthtoken ' . $access_token
-            )
-        ));
+        $req = $this->build_request('/Leads', 'POST', $data);
         return $this->api_is_successful_req($req);
     }
 
-    function api_is_successful_req($req) {
+    public function build_request($endpoint, $method, $data = array()) {
+        $access_token = $this->settings_obj->get_setting('access_token');
+        $api_domain = $this->settings_obj->get_setting('api_domain');
+
+        $query = array(
+            'method' => $method,
+            'headers' => array(
+                'Authorization' => 'Zoho-oauthtoken ' . $access_token
+            )
+        );
+
+        if (in_array($method, array('POST', 'PUT'))) {
+            $query['headers']['Content-Type'] = 'application/json';
+            $query['headers']['cache-control'] = 'no-cache';
+        }
+
+        if (!empty($data)) {
+            $query['body'] = json_encode(array('data' => array($data)));
+        }
+
+        $req = wp_remote_request($api_domain . '/crm/' . $this->api_version . $endpoint, $query);
+        return $req;
+    }
+
+    public function api_is_successful_req($req) {
         if (is_wp_error($req)) {
+            error_log('Error : ' . $req->get_error_message());
             return false;
         }
-        $req_details = json_decode(wp_remote_retrieve_body($req), true);
+        $req_body = wp_remote_retrieve_body($req);
+        $req_details = json_decode($req_body, true);
         return (is_array($req_details) && isset($req_details['data'], $req_details['data'][0]));
     }
 
@@ -385,7 +407,7 @@ class WPUContactFormsZohoCRM {
         }
     }
 
-    function redirect_to_default_page() {
+    public function redirect_to_default_page() {
         echo '<script>document.location.href="' . $this->redirect_uri . '"; </script>';
         die;
     }

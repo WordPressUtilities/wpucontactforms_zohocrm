@@ -4,12 +4,14 @@ namespace wpucontactforms_zohocrm;
 /*
 Class Name: WPU Base Cron
 Description: A class to handle crons
-Version: 0.2.7
+Version: 0.2.10
 Author: Darklg
-Author URI: http://darklg.me/
+Author URI: https://darklg.me/
 License: MIT License
-License URI: http://opensource.org/licenses/MIT
+License URI: https://opensource.org/licenses/MIT
 */
+
+defined('ABSPATH') || die;
 
 class WPUBaseCron {
     public $ns = '';
@@ -42,7 +44,10 @@ class WPUBaseCron {
         ), 99);
 
         /* Check cron */
-        add_action('init', array(&$this,
+        add_action('wp', array(&$this,
+            'check_cron'
+        ));
+        add_action('admin_init', array(&$this,
             'check_cron'
         ));
     }
