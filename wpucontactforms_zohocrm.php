@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.5.1
+Version: 0.521
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -25,7 +25,7 @@ class WPUContactFormsZohoCRM {
     public $settings;
     public $basecron;
     public $settings_update;
-    private $plugin_version = '0.5.1';
+    private $plugin_version = '0.5.2';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -267,8 +267,10 @@ class WPUContactFormsZohoCRM {
 
     public function refresh_token() {
         $settings = $this->settings_obj->get_settings();
-        $accounts_server = $this->settings_obj->get_setting('accounts_server');
-        $server_output = wp_remote_post($accounts_server . "/oauth/" . $this->api_version . "/token", array(
+        if (!isset($settings['client_id'], $settings['client_secret'], $settings['refresh_token']) || !$settings['client_id'] || !$settings['client_secret'] || !$settings['refresh_token']) {
+            return false;
+        }
+        $server_output = wp_remote_post($settings['accounts_server'] . "/oauth/" . $this->api_version . "/token", array(
             'body' => array(
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $settings['refresh_token'],
@@ -280,13 +282,14 @@ class WPUContactFormsZohoCRM {
             $this->set_message('token_error', __('An error occured while refreshing the token.', 'wpucontactforms_zohocrm'), 'error');
             return false;
         }
-        if (!isset($server_output->refresh_token) || !$server_output->refresh_token) {
+        $output_body = json_decode(wp_remote_retrieve_body($server_output));
+        if (!isset($output_body->access_token) || !$output_body->access_token) {
             $this->set_message('token_do_not_exists', __('The response did not contain a token.', 'wpucontactforms_zohocrm'), 'error');
             $this->settings_obj->update_setting('refresh_token', '');
             $this->settings_obj->update_setting('access_token', '');
             return false;
         }
-        $this->update_tokens_from_response(wp_remote_retrieve_body($server_output));
+        $this->update_tokens_from_response($output_body);
     }
 
     public function create_or_update_lead($data = array()) {
