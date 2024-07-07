@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.521
+Version: 0.6.0
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -25,13 +25,14 @@ class WPUContactFormsZohoCRM {
     public $settings;
     public $basecron;
     public $settings_update;
-    private $plugin_version = '0.5.2';
+    private $plugin_version = '0.6.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
     );
     private $messages = false;
     private $api_version = 'v2';
+    private $target_object = 'Leads';
     private $settings_obj;
 
     public function __construct() {
@@ -51,7 +52,7 @@ class WPUContactFormsZohoCRM {
         # CUSTOM PAGE
         $admin_pages = array(
             'main' => array(
-                'has_form' => false,
+                'has_form' => true,
                 'icon_url' => 'dashicons-admin-generic',
                 'menu_name' => $this->plugin_settings['name'],
                 'name' => $this->plugin_settings['name'],
@@ -59,8 +60,22 @@ class WPUContactFormsZohoCRM {
                 'settings_name' => __('Settings', 'wpucontactforms_zohocrm'),
                 'function_content' => array(&$this,
                     'page_content__main'
+                ),
+                'function_action' => array(&$this,
+                    'page_action__main'
+                )
+
+            ),
+            'settings' => array(
+                'has_form' => false,
+                'parent' => 'main',
+                'menu_name' => __('Settings', 'wpucontactforms_zohocrm'),
+                'name' => __('Settings', 'wpucontactforms_zohocrm'),
+                'function_content' => array(&$this,
+                    'page_content__settings'
                 )
             )
+
         );
         $pages_options = array(
             'id' => $this->plugin_settings['id'],
@@ -111,14 +126,17 @@ class WPUContactFormsZohoCRM {
                 )
             ),
             'access_token' => array(
+                'readonly' => 'readonly',
                 'label' => __('Access token', 'wpucontactforms_zohocrm'),
                 'section' => 'token'
             ),
             'expires_in' => array(
+                'readonly' => 'readonly',
                 'label' => __('Token expiration', 'wpucontactforms_zohocrm'),
                 'section' => 'token'
             ),
             'last_update' => array(
+                'readonly' => 'readonly',
                 'label' => __('Last update', 'wpucontactforms_zohocrm'),
                 'section' => 'token'
             ),
@@ -209,20 +227,60 @@ class WPUContactFormsZohoCRM {
                 echo '<div class="notice notice-error"><p>' . __('No application installed', 'wpucontactforms_zohocrm') . '</p></div>';
                 echo '<p>' . sprintf(__('Please <a target="_blank" href="%s">create an new Server-based application here</a> and specify the following redirect_uri : <br /><strong contenteditable>%s</strong>', 'wpucontactforms_zohocrm'), $api_create_url, $this->redirect_uri) . '</p>';
                 echo '<p>' . __('Get the client ID and client Secret and paste it below.', 'wpucontactforms_zohocrm') . '</p>';
-                echo '<hr />';
             } elseif ($token_validity == 'expired-token') {
                 echo $refresh_token_link;
-                echo '<hr />';
             } elseif ($token_validity != 'valid') {
                 echo '<p><a class="button-primary" href="' . $connect_url . '">' . __('Connect to your account', 'wpucontactforms_zohocrm') . '</a></p>';
-                echo '<hr />';
             } else {
                 echo '<div class="notice updated"><p>' . __('Connection seems to work', 'wpucontactforms_zohocrm') . '</p></div>';
                 echo $refresh_token_link;
-                echo '<hr />';
+            }
+            echo '<hr />';
+
+            if ($token_validity == 'valid') {
+                echo '<h3>' . __('Test the API', 'wpucontactforms_zohocrm') . '</h3>';
+                echo '<p>' . __('Create or update a test lead.', 'wpucontactforms_zohocrm') . '</p>';
+                submit_button(__('Test the API', 'wpucontactforms_zohocrm'), 'primary', 'test_connection', false);
             }
         }
 
+    }
+
+    public function page_action__main() {
+        if (isset($_POST['test_connection'])) {
+            $urlparts = wp_parse_url(home_url());
+            $domain = isset($urlparts['host']) && $urlparts['host'] ? $urlparts['host'] : 'example.com';
+            $test_lead = $this->create_or_update_lead(array(
+                'First_Name' => 'Test',
+                'Last_Name' => 'Test',
+                'Email' => 'test_lead@' . $domain,
+                'Lead_Source' => 'Test - ' . $domain
+            ), true);
+
+            $req = $this->build_request('/org', 'GET');
+            $org_details = json_decode(wp_remote_retrieve_body($req), true);
+            $base_org_url = 'https://crm.zoho.eu';
+            if (is_array($org_details) && isset($org_details['org'], $org_details['org'][0])) {
+                $account_server = $this->settings_obj->get_setting('accounts_server');
+                if ($account_server == 'https://accounts.zoho.com') {
+                    $base_org_url = 'https://crm.zoho.com';
+                }
+                $base_org_url .= '/crm/' . $org_details['org'][0]['domain_name'] . '/tab/' . $this->target_object . '/';
+            }
+
+            if (is_array($test_lead) && isset($test_lead['data'], $test_lead['data'][0])) {
+                $base_org_url .= $test_lead['data'][0]['details']['id'];
+            }
+
+            $this->set_message('test_connection', sprintf(__('API Test : <a href="%s" target="_blank">View the lead</a>', 'wpucontactforms_zohocrm'), $base_org_url), 'updated');
+
+        }
+    }
+
+    /* Settings
+    -------------------------- */
+
+    public function page_content__settings() {
         echo '<form action="' . admin_url('options.php') . '" method="post">';
         settings_fields($this->settings_details['option_id']);
         do_settings_sections($this->settings_details['plugin_id']);
@@ -292,7 +350,7 @@ class WPUContactFormsZohoCRM {
         $this->update_tokens_from_response($output_body);
     }
 
-    public function create_or_update_lead($data = array()) {
+    public function create_or_update_lead($data = array(), $return_data = false) {
         if (!is_array($data)) {
             $data = array();
         }
@@ -317,28 +375,28 @@ class WPUContactFormsZohoCRM {
 
         /* If an email exists : try to update record */
         if (isset($data['Email']) && is_email($data['Email']) && $update_records) {
-            $req_search_lead = $this->build_request('/Leads/search?criteria=(Email:equals:' . urlencode($data['Email']) . ')', 'GET');
+            $req_search_lead = $this->build_request('/' . $this->target_object . '/search?criteria=(Email:equals:' . urlencode($data['Email']) . ')', 'GET');
 
             if (!is_wp_error($req_search_lead)) {
                 $lead_details = json_decode(wp_remote_retrieve_body($req_search_lead), true);
                 if (is_array($lead_details) && isset($lead_details['data'], $lead_details['data'][0])) {
                     $data['id'] = $lead_details['data'][0]['id'];
-                    return $this->update_lead($data);
+                    return $this->update_lead($data, $return_data);
                 }
             }
         }
 
-        return $this->create_lead($data);
+        return $this->create_lead($data, $return_data);
     }
 
-    private function update_lead($data) {
-        $req = $this->build_request('/Leads', 'PUT', $data);
-        return $this->api_is_successful_req($req);
+    private function update_lead($data, $return_data = false) {
+        $req = $this->build_request('/' . $this->target_object, 'PUT', $data);
+        return $this->api_is_successful_req($req, $return_data);
     }
 
-    private function create_lead($data) {
-        $req = $this->build_request('/Leads', 'POST', $data);
-        return $this->api_is_successful_req($req);
+    private function create_lead($data, $return_data = false) {
+        $req = $this->build_request('/' . $this->target_object, 'POST', $data);
+        return $this->api_is_successful_req($req, $return_data);
     }
 
     public function build_request($endpoint, $method, $data = array()) {
@@ -365,13 +423,16 @@ class WPUContactFormsZohoCRM {
         return $req;
     }
 
-    public function api_is_successful_req($req) {
+    public function api_is_successful_req($req, $return_data = false) {
         if (is_wp_error($req)) {
             error_log('Error : ' . $req->get_error_message());
             return false;
         }
         $req_body = wp_remote_retrieve_body($req);
         $req_details = json_decode($req_body, true);
+        if ($return_data) {
+            return $req_details;
+        }
         return (is_array($req_details) && isset($req_details['data'], $req_details['data'][0]));
     }
 

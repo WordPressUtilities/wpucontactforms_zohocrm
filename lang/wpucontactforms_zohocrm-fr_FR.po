@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Contact Forms ZohoCRM\n"
-"POT-Creation-Date: 2024-07-04 21:53+0200\n"
+"POT-Creation-Date: 2024-07-07 22:37+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -22,17 +22,18 @@ msgstr "Aide"
 #: .././inc/WPUBaseSettings/WPUBaseSettings.php:132
 #: .././inc/WPUBaseSettings/WPUBaseSettings.php:615
 #: .././inc/WPUBaseSettings/WPUBaseSettings.php:622
-#: .././wpucontactforms_zohocrm.php:59
+#: .././wpucontactforms_zohocrm.php:60 .././wpucontactforms_zohocrm.php:72
+#: .././wpucontactforms_zohocrm.php:73
 msgid "Settings"
 msgstr "Réglages"
 
 #: .././inc/WPUBaseSettings/WPUBaseSettings.php:162
-#: .././wpucontactforms_zohocrm.php:109
+#: .././wpucontactforms_zohocrm.php:124
 msgid "No"
 msgstr "Non"
 
 #: .././inc/WPUBaseSettings/WPUBaseSettings.php:162
-#: .././wpucontactforms_zohocrm.php:110
+#: .././wpucontactforms_zohocrm.php:125
 msgid "Yes"
 msgstr "Oui"
 
@@ -60,76 +61,76 @@ msgstr "Langue"
 msgid "Save"
 msgstr "Sauvegarder"
 
-#: .././wpucontactforms_zohocrm.php:49
+#: .././wpucontactforms_zohocrm.php:50
 msgid "Connect WPU Contact Forms to ZohoCRM"
 msgstr "Connecter WPU Contact Forms à ZohoCRM"
 
-#: .././wpucontactforms_zohocrm.php:85
+#: .././wpucontactforms_zohocrm.php:100
 msgid "App Settings"
 msgstr "Paramètre de l'App"
 
-#: .././wpucontactforms_zohocrm.php:88
+#: .././wpucontactforms_zohocrm.php:103
 msgid "Plugin Settings"
 msgstr "Paramètres du plugin"
 
-#: .././wpucontactforms_zohocrm.php:91
+#: .././wpucontactforms_zohocrm.php:106
 msgid "Token Settings"
 msgstr "Paramètres du token"
 
-#: .././wpucontactforms_zohocrm.php:97
+#: .././wpucontactforms_zohocrm.php:112
 msgid "Client ID"
 msgstr "Client ID"
 
-#: .././wpucontactforms_zohocrm.php:101
+#: .././wpucontactforms_zohocrm.php:116
 msgid "Client Secret"
 msgstr "Client Secret"
 
-#: .././wpucontactforms_zohocrm.php:105
+#: .././wpucontactforms_zohocrm.php:120
 msgid "Update Records"
 msgstr "Mettre à jour les enregistrements"
 
-#: .././wpucontactforms_zohocrm.php:114
+#: .././wpucontactforms_zohocrm.php:129
 msgid "Access token"
 msgstr "Access token"
 
-#: .././wpucontactforms_zohocrm.php:118
+#: .././wpucontactforms_zohocrm.php:133
 msgid "Token expiration"
 msgstr "Expiration du token"
 
-#: .././wpucontactforms_zohocrm.php:122
+#: .././wpucontactforms_zohocrm.php:137
 msgid "Last update"
 msgstr "Dernière mise à jour"
 
-#: .././wpucontactforms_zohocrm.php:126
+#: .././wpucontactforms_zohocrm.php:141
 msgid "Refresh token"
 msgstr "Refresh token"
 
-#: .././wpucontactforms_zohocrm.php:130
+#: .././wpucontactforms_zohocrm.php:145
 msgid "Accounts server"
 msgstr "Accounts server"
 
-#: .././wpucontactforms_zohocrm.php:134
+#: .././wpucontactforms_zohocrm.php:149
 msgid "API Domain"
 msgstr "API Domain"
 
-#: .././wpucontactforms_zohocrm.php:198 .././wpucontactforms_zohocrm.php:391
+#: .././wpucontactforms_zohocrm.php:213 .././wpucontactforms_zohocrm.php:452
 msgid "Token was successfully updated."
 msgstr "Le token a été mis à jour avec succès."
 
-#: .././wpucontactforms_zohocrm.php:203
+#: .././wpucontactforms_zohocrm.php:218
 msgid "Refresh your access token"
 msgstr "Actualiser votre access token"
 
-#: .././wpucontactforms_zohocrm.php:205
+#: .././wpucontactforms_zohocrm.php:220
 #, php-format
 msgid "Last update: %s ago."
 msgstr "Dernière mise à jour : il y a %s."
 
-#: .././wpucontactforms_zohocrm.php:209
+#: .././wpucontactforms_zohocrm.php:224
 msgid "No application installed"
 msgstr "Aucune application installée"
 
-#: .././wpucontactforms_zohocrm.php:210
+#: .././wpucontactforms_zohocrm.php:225
 #, php-format
 msgid ""
 "Please <a target=\"_blank\" href=\"%s\">create an new Server-based "
@@ -140,30 +141,49 @@ msgstr ""
 "« server-based » ici</a> en spécifiant la redirect_uri suivante : <br /"
 "><strong contenteditable>%s</strong>"
 
-#: .././wpucontactforms_zohocrm.php:211
+#: .././wpucontactforms_zohocrm.php:226
 msgid "Get the client ID and client Secret and paste it below."
 msgstr "Obtenez le client ID et le client Secret et collez-les ci-dessous."
 
-#: .././wpucontactforms_zohocrm.php:217
+#: .././wpucontactforms_zohocrm.php:230
 msgid "Connect to your account"
 msgstr "Connectez-vous à votre compte"
 
-#: .././wpucontactforms_zohocrm.php:220
+#: .././wpucontactforms_zohocrm.php:232
 msgid "Connection seems to work"
 msgstr "La connexion semble fonctionner"
 
-#: .././wpucontactforms_zohocrm.php:229
+#: .././wpucontactforms_zohocrm.php:238 .././wpucontactforms_zohocrm.php:240
+msgid "Test the API"
+msgstr "Tester l’API"
+
+#: .././wpucontactforms_zohocrm.php:239
+msgid "Create or update a test lead."
+msgstr "Créez ou mettez à jour un prospect de test."
+
+#: .././wpucontactforms_zohocrm.php:272
+#, php-format
+msgid "API Test : <a href=\"%s\" target=\"_blank\">View the lead</a>"
+msgstr "Test API : <a href=\"%s\" target=\"_blank\">Voir le lead</a>"
+
+#: .././wpucontactforms_zohocrm.php:284
 msgid "Save Changes"
 msgstr "Sauvegarder"
 
-#: .././wpucontactforms_zohocrm.php:280
+#: .././wpucontactforms_zohocrm.php:337
 msgid "An error occured while refreshing the token."
 msgstr "Une erreur s’est produite lors de l’actualisation du token."
 
-#: .././wpucontactforms_zohocrm.php:284
+#: .././wpucontactforms_zohocrm.php:342
 msgid "The response did not contain a token."
 msgstr "La réponse ne contenait pas de token."
 
-#: .././wpucontactforms_zohocrm.php:394
+#: .././wpucontactforms_zohocrm.php:455
 msgid "There was an error"
 msgstr "Il y a eu une erreur"
+
+#~ msgid "Test"
+#~ msgstr "Test"
+
+#~ msgid "Test connection"
+#~ msgstr "Tester la connexion"
