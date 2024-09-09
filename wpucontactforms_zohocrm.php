@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.6.0
+Version: 0.7.0
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -18,6 +18,7 @@ License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUContactFormsZohoCRM {
+    public $basetoolbox;
     public $redirect_uri;
     public $plugin_description;
     public $adminpages;
@@ -25,7 +26,7 @@ class WPUContactFormsZohoCRM {
     public $settings;
     public $basecron;
     public $settings_update;
-    private $plugin_version = '0.6.0';
+    private $plugin_version = '0.7.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -165,6 +166,11 @@ class WPUContactFormsZohoCRM {
             'wpucontactforms_zohocrm__cron_hook'
         ), 99);
 
+        require_once __DIR__ . '/inc/WPUBaseToolbox/WPUBaseToolbox.php';
+        $this->basetoolbox = new \wpucontactforms_zohocrm\WPUBaseToolbox(array(
+            'need_form_js' => false
+        ));
+
         # MESSAGES
         if (is_admin()) {
             require_once __DIR__ . '/inc/WPUBaseMessages/WPUBaseMessages.php';
@@ -238,12 +244,43 @@ class WPUContactFormsZohoCRM {
             echo '<hr />';
 
             if ($token_validity == 'valid') {
-                echo '<h3>' . __('Test the API', 'wpucontactforms_zohocrm') . '</h3>';
-                echo '<p>' . __('Create or update a test lead.', 'wpucontactforms_zohocrm') . '</p>';
-                submit_button(__('Test the API', 'wpucontactforms_zohocrm'), 'primary', 'test_connection', false);
+                $this->page_content__main__display_api_test();
+                echo '<hr />';
+                $this->page_content__main__display_fields();
             }
         }
+    }
 
+    function page_content__main__display_api_test() {
+        echo '<h3>' . __('Test the API', 'wpucontactforms_zohocrm') . '</h3>';
+        echo '<p>' . __('Create or update a test lead.', 'wpucontactforms_zohocrm') . '</p>';
+        submit_button(__('Test the API', 'wpucontactforms_zohocrm'), 'primary', 'test_connection', false);
+    }
+
+    function page_content__main__display_fields() {
+        echo '<h3>' . __('Fields', 'wpucontactforms_zohocrm') . '</h3>';
+        echo '<p>' . __('You can map your contact form fields to ZohoCRM fields.', 'wpucontactforms_zohocrm') . '</p>';
+
+        $fields = json_decode(get_option('wpucontactforms_zohocrm_fields'), true);
+        $label_button = __('Map fields', 'wpucontactforms_zohocrm');
+        if ($fields) {
+            $label_button = __('Update fields', 'wpucontactforms_zohocrm');
+            $displayed_fields = array();
+            foreach ($fields['fields'] as $field) {
+                $displayed_fields[] = array(
+                    'name' => isset($field['field_label']) ? $field['field_label'] : '',
+                    'api_name' => isset($field['api_name']) ? $field['api_name'] : '',
+                    'type' => isset($field['data_type']) ? $field['data_type'] : '',
+                    'raw' => var_export($field, true)
+                );
+            }
+
+            echo '<details style="margin:1em 0">';
+            echo '<summary>' . __('Fields list', 'wpucontactforms_zohocrm') . '</summary>';
+            echo $this->basetoolbox->array_to_html_table($displayed_fields);
+            echo '</details>';
+        }
+        submit_button($label_button, 'primary', 'map_fields', false);
     }
 
     public function page_action__main() {
@@ -274,6 +311,15 @@ class WPUContactFormsZohoCRM {
 
             $this->set_message('test_connection', sprintf(__('API Test : <a href="%s" target="_blank">View the lead</a>', 'wpucontactforms_zohocrm'), $base_org_url), 'updated');
 
+        }
+
+        if (isset($_POST['map_fields'])) {
+            $req_search_lead = $this->build_request('/settings/fields?module=' . $this->target_object, 'GET');
+            if (!is_wp_error($req_search_lead)) {
+                $lead_details = wp_remote_retrieve_body($req_search_lead);
+                update_option('wpucontactforms_zohocrm_fields', $lead_details, false);
+                $this->set_message('map_fields', __('Fields have been updated', 'wpucontactforms_zohocrm'), 'updated');
+            }
         }
     }
 

@@ -7,6 +7,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
 /* Delete options */
 $options = array(
     'wpucontactforms_zohocrm_options',
+    'wpucontactforms_zohocrm_fields',
     'wpucontactforms_zohocrm__cron_hook_croninterval',
     'wpucontactforms_zohocrm__cron_hook_lastexec'
 );
