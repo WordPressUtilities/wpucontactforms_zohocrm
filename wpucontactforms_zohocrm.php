@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.7.1
+Version: 0.7.2
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -26,7 +26,8 @@ class WPUContactFormsZohoCRM {
     public $settings;
     public $basecron;
     public $settings_update;
-    private $plugin_version = '0.7.1';
+    private $user_level = 'manage_options';
+    private $plugin_version = '0.7.2';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -42,6 +43,8 @@ class WPUContactFormsZohoCRM {
 
     public function plugins_loaded() {
         $this->redirect_uri = admin_url('admin.php?page=wpucontactforms_zohocrm-main');
+
+        $this->user_level = apply_filters('wpucontactforms_zohocrm_user_level', $this->user_level);
 
         # TRANSLATION
         $lang_dir = dirname(plugin_basename(__FILE__)) . '/lang/';
@@ -80,7 +83,7 @@ class WPUContactFormsZohoCRM {
         );
         $pages_options = array(
             'id' => $this->plugin_settings['id'],
-            'level' => 'manage_options',
+            'level' => $this->user_level,
             'basename' => plugin_basename(__FILE__)
         );
         // Init admin page
@@ -93,6 +96,7 @@ class WPUContactFormsZohoCRM {
             'create_page' => false,
             'plugin_basename' => plugin_basename(__FILE__),
             # Default
+            'user_cap' => $this->user_level,
             'plugin_name' => $this->plugin_settings['name'],
             'plugin_id' => $this->plugin_settings['id'],
             'option_id' => $this->plugin_settings['id'] . '_options',
@@ -251,13 +255,13 @@ class WPUContactFormsZohoCRM {
         }
     }
 
-    function page_content__main__display_api_test() {
+    public function page_content__main__display_api_test() {
         echo '<h3>' . __('Test the API', 'wpucontactforms_zohocrm') . '</h3>';
         echo '<p>' . __('Create or update a test lead.', 'wpucontactforms_zohocrm') . '</p>';
         submit_button(__('Test the API', 'wpucontactforms_zohocrm'), 'primary', 'test_connection', false);
     }
 
-    function page_content__main__display_fields() {
+    public function page_content__main__display_fields() {
         echo '<h3>' . __('Fields', 'wpucontactforms_zohocrm') . '</h3>';
         echo '<p>' . __('You can map your contact form fields to ZohoCRM fields.', 'wpucontactforms_zohocrm') . '</p>';
 
