@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.7.2
+Version: 0.8.0
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -27,7 +27,7 @@ class WPUContactFormsZohoCRM {
     public $basecron;
     public $settings_update;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.7.2';
+    private $plugin_version = '0.8.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -158,6 +158,22 @@ class WPUContactFormsZohoCRM {
                 'section' => 'token'
             )
         );
+        $users = $this->get_owners();
+        if ($users) {
+            $this->settings_details['sections']['owners'] = array(
+                'name' => __('Owners', 'wpucontactforms_zohocrm'),
+                'wpubasesettings_checkall' => true
+            );
+            foreach ($users as $user_id => $user) {
+                $this->settings['owner_' . $user_id] = array(
+                    'label' => $user,
+                    'label_check' => sprintf(__('Randomly assign to %s', 'wpucontactforms_zohocrm'), $user),
+                    'section' => 'owners',
+                    'type' => 'checkbox'
+                );
+            }
+        }
+
         require_once __DIR__ . '/inc/WPUBaseSettings/WPUBaseSettings.php';
         $this->settings_obj = new \wpucontactforms_zohocrm\WPUBaseSettings($this->settings_details, $this->settings);
         require_once __DIR__ . '/inc/WPUBaseCron/WPUBaseCron.php';
@@ -250,6 +266,8 @@ class WPUContactFormsZohoCRM {
             if ($token_validity == 'valid') {
                 $this->page_content__main__display_api_test();
                 echo '<hr />';
+                $this->page_content__main__display_users();
+                echo '<hr />';
                 $this->page_content__main__display_fields();
             }
         }
@@ -259,6 +277,26 @@ class WPUContactFormsZohoCRM {
         echo '<h3>' . __('Test the API', 'wpucontactforms_zohocrm') . '</h3>';
         echo '<p>' . __('Create or update a test lead.', 'wpucontactforms_zohocrm') . '</p>';
         submit_button(__('Test the API', 'wpucontactforms_zohocrm'), 'primary', 'test_connection', false);
+    }
+
+    public function page_content__main__display_users() {
+
+        echo '<h3>' . __('Users', 'wpucontactforms_zohocrm') . '</h3>';
+        echo '<p>' . __('You can get a list of active users in Zoho.', 'wpucontactforms_zohocrm') . '</p>';
+        $users = $this->get_owners();
+        $label_button = __('Get users', 'wpucontactforms_zohocrm');
+        if ($users) {
+            $label_button = __('Update users', 'wpucontactforms_zohocrm');
+            echo '<details style="margin:1em 0">';
+            echo '<summary>' . __('Users list', 'wpucontactforms_zohocrm') . '</summary>';
+            echo '<ul>';
+            foreach ($users as $user_id => $user) {
+                echo '<li>' . $user_id . ' : ' . $user . '</li>';
+            }
+            echo '</ul>';
+            echo '</details>';
+        }
+        submit_button($label_button, 'primary', 'update_users', false);
     }
 
     public function page_content__main__display_fields() {
@@ -325,6 +363,24 @@ class WPUContactFormsZohoCRM {
                 $this->set_message('map_fields', __('Fields have been updated', 'wpucontactforms_zohocrm'), 'updated');
             }
         }
+
+        if (isset($_POST['update_users'])) {
+            $req_search_users = $this->build_request('/users', 'GET');
+            if (!is_wp_error($req_search_users)) {
+                $users_details = json_decode(wp_remote_retrieve_body($req_search_users), 1);
+                $main_user_list = array();
+                if ($users_details && isset($users_details['users'])) {
+                    foreach ($users_details['users'] as $user) {
+                        if ($user['status'] != 'active') {
+                            continue;
+                        }
+                        $main_user_list["user-" . $user['id']] = $user['full_name'];
+                    }
+                }
+                update_option('wpucontactforms_zohocrm_users', $main_user_list, false);
+                $this->set_message('update_users', __('Users have been updated', 'wpucontactforms_zohocrm'), 'updated');
+            }
+        }
     }
 
     /* Settings
@@ -336,6 +392,60 @@ class WPUContactFormsZohoCRM {
         do_settings_sections($this->settings_details['plugin_id']);
         submit_button(__('Save Changes', 'wpucontactforms_zohocrm'));
         echo '</form>';
+    }
+
+    /* ----------------------------------------------------------
+      Owners
+    ---------------------------------------------------------- */
+
+    /* Retrieve a list of all owners
+    -------------------------- */
+
+    public function get_owners() {
+        $users = get_option('wpucontactforms_zohocrm_users');
+        if (!$users) {
+            return array();
+        }
+        return $users;
+    }
+
+    /* Get a random owner
+    -------------------------- */
+
+    public function get_random_owner() {
+        $default_users = $this->get_owners();
+        if (!$default_users || !is_array($default_users)) {
+            return false;
+        }
+
+        /* Get active users */
+        $active_users = array();
+        $settings = $this->settings_obj->get_settings();
+
+        foreach ($default_users as $user_id => $user) {
+            if (isset($settings['owner_' . $user_id]) && $settings['owner_' . $user_id] == '1') {
+                $active_users[$user_id] = $user;
+            }
+        }
+
+        /* Use default user */
+        if (empty($active_users)) {
+            return false;
+        }
+
+        /* Return only selected user */
+        if (count($active_users) < 2) {
+            return key($active_users);
+        }
+        /* Remove last owner from choice */
+        $last_owner = get_option('wpucontactforms_zohocrm_last_owner');
+        if ($last_owner && $active_users[$last_owner]) {
+            unset($active_users[$last_owner]);
+        }
+        /* Get a random owner */
+        $user_id = array_rand($active_users);
+        update_option('wpucontactforms_zohocrm_last_owner', $user_id, false);
+        return $user_id;
     }
 
     /* ----------------------------------------------------------
@@ -414,6 +524,11 @@ class WPUContactFormsZohoCRM {
         $token_validity = $this->get_token_validity();
         if ($token_validity == 'expired-token') {
             $this->refresh_token();
+        }
+
+        $owner_id = $this->get_random_owner();
+        if ($owner_id) {
+            $data['Owner'] = (int) str_replace('user-', '', $owner_id);
         }
 
         $settings = $this->settings_obj->get_settings();
