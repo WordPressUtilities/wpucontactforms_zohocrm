@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.8.2
+Version: 0.8.3
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -26,8 +26,9 @@ class WPUContactFormsZohoCRM {
     public $settings;
     public $basecron;
     public $settings_update;
+    public $last_random_owner_email = false;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.8.2';
+    private $plugin_version = '0.8.3';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -165,9 +166,14 @@ class WPUContactFormsZohoCRM {
                 'wpubasesettings_checkall' => true
             );
             foreach ($users as $user_id => $user) {
+                if (!is_array($user)) {
+                    $user = array(
+                        'full_name' => $user
+                    );
+                }
                 $this->settings['owner_' . $user_id] = array(
-                    'label' => $user,
-                    'label_check' => sprintf(__('Randomly assign to %s', 'wpucontactforms_zohocrm'), $user),
+                    'label' => $user['full_name'],
+                    'label_check' => sprintf(__('Randomly assign to %s', 'wpucontactforms_zohocrm'), $user['full_name']),
                     'section' => 'owners',
                     'type' => 'checkbox'
                 );
@@ -291,7 +297,12 @@ class WPUContactFormsZohoCRM {
             echo '<summary>' . __('Users list', 'wpucontactforms_zohocrm') . '</summary>';
             echo '<ul>';
             foreach ($users as $user_id => $user) {
-                echo '<li>' . $user_id . ' : ' . $user . '</li>';
+                if (!is_array($user)) {
+                    $user = array(
+                        'full_name' => $user
+                    );
+                }
+                echo '<li>' . $user_id . ' : ' . json_encode($user) . '</li>';
             }
             echo '</ul>';
             echo '</details>';
@@ -374,7 +385,10 @@ class WPUContactFormsZohoCRM {
                         if ($user['status'] != 'active') {
                             continue;
                         }
-                        $main_user_list["user-" . $user['id']] = $user['full_name'];
+                        $main_user_list["user-" . $user['id']] = array(
+                            'full_name' => $user['full_name'],
+                            'email' => $user['email']
+                        );
                     }
                 }
                 update_option('wpucontactforms_zohocrm_users', $main_user_list, false);
@@ -442,9 +456,13 @@ class WPUContactFormsZohoCRM {
         if ($last_owner && $active_users[$last_owner]) {
             unset($active_users[$last_owner]);
         }
+
         /* Get a random owner */
         $user_id = array_rand($active_users);
         update_option('wpucontactforms_zohocrm_last_owner', $user_id, false);
+        if (isset($active_users[$user_id]['email'])) {
+            $this->last_random_owner_email = $active_users[$user_id]['email'];;
+        }
         return $user_id;
     }
 
@@ -459,12 +477,12 @@ class WPUContactFormsZohoCRM {
                 $zoho_data[$field['zohocrm_field_name']] = $field['value'];
             }
         }
-
         $zoho_data = apply_filters('wpucontactforms_zohocrm_data_before_lead', $zoho_data, $form);
 
         if ($zoho_data) {
             $this->create_or_update_lead($zoho_data);
         }
+        do_action('wpucontactforms_zohocrm_after_lead', $zoho_data, $this);
     }
 
     /* ----------------------------------------------------------
