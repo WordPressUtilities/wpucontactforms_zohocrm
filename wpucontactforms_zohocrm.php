@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.8.3
+Version: 0.9.0
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -28,7 +28,7 @@ class WPUContactFormsZohoCRM {
     public $settings_update;
     public $last_random_owner_email = false;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.8.3';
+    private $plugin_version = '0.9.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -39,10 +39,10 @@ class WPUContactFormsZohoCRM {
     private $settings_obj;
 
     public function __construct() {
-        add_action('plugins_loaded', array(&$this, 'plugins_loaded'));
+        add_action('init', array(&$this, 'init'));
     }
 
-    public function plugins_loaded() {
+    public function init() {
         $this->redirect_uri = admin_url('admin.php?page=wpucontactforms_zohocrm-main');
 
         $this->user_level = apply_filters('wpucontactforms_zohocrm_user_level', $this->user_level);
@@ -461,7 +461,7 @@ class WPUContactFormsZohoCRM {
         $user_id = array_rand($active_users);
         update_option('wpucontactforms_zohocrm_last_owner', $user_id, false);
         if (isset($active_users[$user_id]['email'])) {
-            $this->last_random_owner_email = $active_users[$user_id]['email'];;
+            $this->last_random_owner_email = $active_users[$user_id]['email'];
         }
         return $user_id;
     }
@@ -636,8 +636,12 @@ class WPUContactFormsZohoCRM {
         ));
 
         if (!is_wp_error($server_output)) {
-            $this->update_tokens_from_response(wp_remote_retrieve_body($server_output));
-            $this->set_message('token_updated', __('Token was successfully updated.', 'wpucontactforms_zohocrm'), 'updated');
+            $has_updated = $this->update_tokens_from_response(wp_remote_retrieve_body($server_output));
+            if ($has_updated) {
+                $this->set_message('token_updated', __('Token was successfully updated.', 'wpucontactforms_zohocrm'), 'updated');
+            } else {
+                $this->set_message('token_error', __('An error occured while updating the token.', 'wpucontactforms_zohocrm'), 'error');
+            }
             $this->redirect_to_default_page();
         } else {
             echo '<p>' . __('There was an error', 'wpucontactforms_zohocrm') . '</p>';
@@ -650,6 +654,16 @@ class WPUContactFormsZohoCRM {
     public function update_tokens_from_response($server_output) {
         if (!is_object($server_output)) {
             $server_output = json_decode($server_output);
+        }
+        if (isset($server_output->error)) {
+            if (is_admin() && isset($_GET['page'])) {
+                $error_message = $server_output->error;
+                if (is_array($error_message)) {
+                    $error_message = implode(' - ', $error_message);
+                }
+                $this->set_message('token_error_message', strip_tags($error_message), 'error');
+            }
+            return false;
         }
         if (isset($server_output->access_token) && $server_output->access_token) {
             $this->settings_obj->update_setting('access_token', $server_output->access_token);
@@ -664,6 +678,7 @@ class WPUContactFormsZohoCRM {
         if (isset($server_output->api_domain) && $server_output->api_domain) {
             $this->settings_obj->update_setting('api_domain', $server_output->api_domain);
         }
+        return true;
     }
 
     public function redirect_to_default_page() {
