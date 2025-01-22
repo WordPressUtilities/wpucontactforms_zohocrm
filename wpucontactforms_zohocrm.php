@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.9.0
+Version: 0.10.0
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -28,7 +28,7 @@ class WPUContactFormsZohoCRM {
     public $settings_update;
     public $last_random_owner_email = false;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.9.0';
+    private $plugin_version = '0.10.0';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -130,6 +130,11 @@ class WPUContactFormsZohoCRM {
                     0 => __('No', 'wpucontactforms_zohocrm'),
                     1 => __('Yes', 'wpucontactforms_zohocrm')
                 )
+            ),
+            'mail_alert_error' => array(
+                'label' => __('Send error emails to', 'wpucontactforms_zohocrm'),
+                'section' => 'plugin',
+                'type' => 'email'
             ),
             'access_token' => array(
                 'readonly' => 'readonly',
@@ -506,6 +511,7 @@ class WPUContactFormsZohoCRM {
     public function refresh_token() {
         $settings = $this->settings_obj->get_settings();
         if (!isset($settings['client_id'], $settings['client_secret'], $settings['refresh_token']) || !$settings['client_id'] || !$settings['client_secret'] || !$settings['refresh_token']) {
+            $this->maybe_alert_error('Missing client_id, client_secret or refresh_token');
             return false;
         }
         $server_output = wp_remote_post($settings['accounts_server'] . "/oauth/" . $this->api_version . "/token", array(
@@ -518,11 +524,13 @@ class WPUContactFormsZohoCRM {
         ));
         if (is_wp_error($server_output)) {
             $this->set_message('token_error', __('An error occured while refreshing the token.', 'wpucontactforms_zohocrm'), 'error');
+            $this->maybe_alert_error('Error while refreshing token');
             return false;
         }
         $output_body = json_decode(wp_remote_retrieve_body($server_output));
         if (!isset($output_body->access_token) || !$output_body->access_token) {
             $this->set_message('token_do_not_exists', __('The response did not contain a token.', 'wpucontactforms_zohocrm'), 'error');
+            $this->maybe_alert_error('No access token in response');
             $this->settings_obj->update_setting('refresh_token', '');
             $this->settings_obj->update_setting('access_token', '');
             return false;
@@ -651,6 +659,33 @@ class WPUContactFormsZohoCRM {
         }
     }
 
+    public function maybe_alert_error($error_content = '') {
+        $mail_alert_error = $this->settings_obj->get_setting('mail_alert_error');
+        if (!is_email($mail_alert_error)) {
+            return;
+        }
+        $error_mail_content = __('An error occured in ZohoCRM ', 'wpucontactforms_zohocrm') . "\n\n";
+        if ($error_content) {
+            $error_mail_content .= '“' . $error_content . '”' . "\n\n";
+        }
+        $error_mail_content .= __('Please go to the plugin settings to check the error.', 'wpucontactforms_zohocrm') . "\n\n";
+        $error_mail_content .= $this->redirect_uri;
+
+        /* Send errors to specified user + admin */
+        array_filter($email_addresses);
+        $email_addresses = array_unique(array(
+            $mail_alert_error,
+            get_option('admin_email')
+        ));
+        foreach ($email_addresses as $email_address) {
+            wp_mail(
+                $email_address,
+                '[' . get_bloginfo('name') . '] ' . __('ZohoCRM Error', 'wpucontactforms_zohocrm'),
+                $error_mail_content
+            );
+        }
+    }
+
     public function update_tokens_from_response($server_output) {
         if (!is_object($server_output)) {
             $server_output = json_decode($server_output);
@@ -661,7 +696,7 @@ class WPUContactFormsZohoCRM {
                 if (is_array($error_message)) {
                     $error_message = implode(' - ', $error_message);
                 }
-                $this->set_message('token_error_message', strip_tags($error_message), 'error');
+                $this->set_message('token_error_message', wp_strip_all_tags($error_message), 'error');
             }
             return false;
         }
