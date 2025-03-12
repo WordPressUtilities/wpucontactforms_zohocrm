@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.10.1
+Version: 0.10.2
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -28,7 +28,7 @@ class WPUContactFormsZohoCRM {
     public $settings_update;
     public $last_random_owner_email = false;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.10.1';
+    private $plugin_version = '0.10.2';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -530,7 +530,7 @@ class WPUContactFormsZohoCRM {
         $output_body = json_decode(wp_remote_retrieve_body($server_output));
         if (!isset($output_body->access_token) || !$output_body->access_token) {
             $this->set_message('token_do_not_exists', __('The response did not contain a token.', 'wpucontactforms_zohocrm'), 'error');
-            $this->maybe_alert_error('No access token in response');
+            $this->maybe_alert_error("No access token in response : \n\n" . wp_remote_retrieve_body($server_output));
             $this->settings_obj->update_setting('refresh_token', '');
             $this->settings_obj->update_setting('access_token', '');
             return false;
@@ -557,9 +557,7 @@ class WPUContactFormsZohoCRM {
             $data['Owner'] = (int) str_replace('user-', '', $owner_id);
         }
 
-        $settings = $this->settings_obj->get_settings();
         $access_token = $this->settings_obj->get_setting('access_token');
-        $api_domain = $this->settings_obj->get_setting('api_domain');
         $update_records = $this->settings_obj->get_setting('update_records');
 
         if (!$access_token) {
