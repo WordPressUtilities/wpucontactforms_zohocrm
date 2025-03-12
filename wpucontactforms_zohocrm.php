@@ -5,7 +5,7 @@ Plugin Name: WPU Contact Forms ZohoCRM
 Plugin URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Update URI: https://github.com/WordPressUtilities/wpucontactforms_zohocrm
 Description: Connect WPU Contact Forms to ZohoCRM
-Version: 0.10.0
+Version: 0.10.1
 Author: darklg
 Author URI: https://darklg.me/
 Text Domain: wpucontactforms_zohocrm
@@ -28,7 +28,7 @@ class WPUContactFormsZohoCRM {
     public $settings_update;
     public $last_random_owner_email = false;
     private $user_level = 'manage_options';
-    private $plugin_version = '0.10.0';
+    private $plugin_version = '0.10.1';
     private $plugin_settings = array(
         'id' => 'wpucontactforms_zohocrm',
         'name' => 'WPU Contact Forms - ZohoCRM'
@@ -672,11 +672,9 @@ class WPUContactFormsZohoCRM {
         $error_mail_content .= $this->redirect_uri;
 
         /* Send errors to specified user + admin */
-        array_filter($email_addresses);
-        $email_addresses = array_unique(array(
-            $mail_alert_error,
-            get_option('admin_email')
-        ));
+        $email_addresses = explode(',', $mail_alert_error);
+        $email_addresses[] = get_option('admin_email');
+        $email_addresses = array_unique($email_addresses);
         foreach ($email_addresses as $email_address) {
             wp_mail(
                 $email_address,
